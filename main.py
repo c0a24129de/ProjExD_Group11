@@ -207,6 +207,32 @@ class Enemy(pg.sprite.Sprite):
             self.state = "stop"
         self.rect.move_ip(self.vx, self.vy)
 
+class Score:
+    def __init__(self):
+        self.font = pg.font.Font(None, 50)
+        self.color = (0, 0, 255)
+        self.value = 0
+        self.image = self.font.render(f"Score: {self.value}", 0, self.color)
+        self.rect = self.image.get_rect()
+        self.rect.center = 100, HEIGHT-50
+
+    def update(self, screen: pg.Surface):
+        self.image = self.font.render(f"Score: {self.value}", 0, self.color)
+        screen.blit(self.image, self.rect)
+
+class Point(pg.sprite.Sprite):
+    def __init__(self, xy: tuple[int, int]):
+        super().__init__()
+        self.image = pg.transform.rotozoom(pg.image.load("fig/point.png"), 0, 0.1)
+        self.rect = self.image.get_rect()
+        self.rect.center = xy
+        self.vx = 0
+        self.vy = 2
+
+    def update(self):
+        self.rect.move_ip(self.vx, self.vy)
+        if self.rect.top > HEIGHT:
+            self.kill()
 
 def main():
     pg.display.set_caption("真！こうかとん無双")
@@ -217,7 +243,8 @@ def main():
     beams = pg.sprite.Group()
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
-
+    score = Score()
+    points = pg.sprite.Group()
 
     tmr = 0
     clock = pg.time.Clock()
@@ -240,6 +267,13 @@ def main():
         for emy in pg.sprite.groupcollide(emys, beams, True, True).keys():  # ビームと衝突した敵機リスト
             exps.add(Explosion(emy, 100))  # 爆発エフェクト
             bird.change_img(6, screen)  # こうかとん喜びエフェクト
+            score.value += 10
+
+            if random.random() < 0.1:
+                points.add(Point(emy.rect.center))
+
+        if pg.sprite.spritecollide(bird, points, True):
+            score.value += 50
         
         bird.update(key_lst, screen)
         beams.update()
@@ -248,6 +282,9 @@ def main():
         emys.draw(screen)
         exps.update()
         exps.draw(screen)
+        score.update(screen)
+        points.update()
+        points.draw(screen)
         pg.display.update()
         tmr += 1
         clock.tick(50)
