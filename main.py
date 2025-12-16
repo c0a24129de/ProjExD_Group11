@@ -314,6 +314,9 @@ def main():
         for emy in pg.sprite.groupcollide(emys, beams, True, True).keys():  # ビームと衝突した敵機リスト
             exps.add(Explosion(emy, 100))  # 爆発エフェクト
             bird.change_img(6, screen)  # こうかとん喜びエフェクト
+
+        for bullet in pg.sprite.spritecollide(bird, bullets, True):
+            exps.add(Explosion(bullet, 10))  # 爆発エフェクト
         
         bird.update(key_lst, screen)
         beams.update()
