@@ -183,7 +183,7 @@ class Bullet(pg.sprite.Sprite):
     """
     敵機の爆弾に関するクラス
     """
-    def __init__(self, image: pg.Surface, direction: tuple[float, float], speed: float):
+    def __init__(self, image: pg.Surface, direction: tuple[float, float], pos: tuple[int, int], speed: float):
         """
         敵機が放つ爆弾画像Surfaceを生成する
         引数1 enemy：爆弾を放つ敵機
@@ -192,7 +192,7 @@ class Bullet(pg.sprite.Sprite):
         super().__init__()
         self.image = image
         self.rect = self.image.get_rect()
-        self.rect.center = WIDTH//2, HEIGHT//2
+        self.rect.center = pos
         self.vx, self.vy = direction
         self.speed = speed
 
@@ -213,6 +213,7 @@ class Enemy(pg.sprite.Sprite):
     敵機に関するクラス
     """
     imgs = [pg.image.load(f"fig/alien{i}.png") for i in range(1, 4)]
+    bullet_img = pg.image.load("fig/bullet1.png")
     
     def __init__(self):
         super().__init__()
@@ -222,7 +223,8 @@ class Enemy(pg.sprite.Sprite):
         self.vx, self.vy = 0, +6
         self.bound = random.randint(50, HEIGHT//2)  # 停止位置
         self.state = "down"  # 降下状態or停止状態
-        self.interval = random.randint(50, 300)  # 爆弾投下インターバル
+        self.interval = 20  # 爆弾投下インターバル
+        self.bullet_img = __class__.bullet_img
 
     def update(self):
         """
@@ -234,6 +236,15 @@ class Enemy(pg.sprite.Sprite):
             self.vy = 0
             self.state = "stop"
         self.rect.move_ip(self.vx, self.vy)
+
+    def shoot(self, bird: Bird) -> Bullet:
+        """
+        敵機がこうかとんに向けて爆弾を放つ
+        引数 bird：こうかとん
+        戻り値：爆弾インスタンス
+        """
+        direction = calc_orientation(self.rect, bird.rect)
+        return Bullet(self.bullet_img, direction, self.rect.center, 6)
 
 class Boss(Enemy):
     """
@@ -250,6 +261,8 @@ class Boss(Enemy):
         self.state = "down"  # 降下状態or停止状態
         self.interval = 30  # 爆弾投下インターバル
 
+        self.bullet_imgs = [pg.image.load("fig/bullet1.png")]
+
     def update(self):
         """
         敵機を速度ベクトルself.vyに基づき移動（降下）させる
@@ -259,8 +272,7 @@ class Boss(Enemy):
         if self.rect.centery > self.bound:
             self.vy = 0
             self.state = "stop"
-        self.rect.move_ip(self.vx, self.vy)
-              
+        self.rect.move_ip(self.vx, self.vy)             
 
 
 def main():
@@ -272,6 +284,7 @@ def main():
     beams = pg.sprite.Group()
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
+    bullets = pg.sprite.Group()
 
 
     tmr = 0
@@ -284,7 +297,6 @@ def main():
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 beams.add(Beam(bird, 0))
                     
-
             key_lst = pg.key.get_pressed()              
 
         screen.blit(bg_img, [0, 0])
@@ -292,8 +304,12 @@ def main():
         if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
             emys.add(Enemy())
 
-        if tmr%1000 == 0 and tmr != 0:  # 1000フレームに1回，ボス敵機を出現させる
+        if tmr == 1000:  # 1000フレームでボス登場
             emys.add(Boss())
+
+        for emy in emys:
+            if emy.state == "stop" and tmr % emy.interval == 0:
+                bullets.add(emy.shoot(bird))
 
         for emy in pg.sprite.groupcollide(emys, beams, True, True).keys():  # ビームと衝突した敵機リスト
             exps.add(Explosion(emy, 100))  # 爆発エフェクト
@@ -304,6 +320,8 @@ def main():
         beams.draw(screen)
         emys.update()
         emys.draw(screen)
+        bullets.update()
+        bullets.draw(screen)
         exps.update()
         exps.draw(screen)
         pg.display.update()
