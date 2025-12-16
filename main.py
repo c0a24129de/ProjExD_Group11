@@ -186,8 +186,10 @@ class Bullet(pg.sprite.Sprite):
     def __init__(self, image: pg.Surface, direction: tuple[float, float], pos: tuple[int, int], speed: float):
         """
         敵機が放つ爆弾画像Surfaceを生成する
-        引数1 enemy：爆弾を放つ敵機
-        引数2 bird：こうかとん
+        引数1 image：爆弾の画像Surface
+        引数2 direction：爆弾の進行方向を表すタプル(vx, vy)
+        引数3 pos：爆弾の初期位置座標タプル
+        引数4 speed：爆弾の速度
         """
         super().__init__()
         self.image = image
@@ -200,7 +202,7 @@ class Bullet(pg.sprite.Sprite):
     def update(self):
         """
         爆弾を速度ベクトルself.vx, self.vyに基づき移動させる
-        引数 screen：画面Surface
+        画面外に出た場合は爆弾を消去する
         """
         self.rect.move_ip(self.speed*self.vx, self.speed*self.vy)
         if check_bound(self.rect) != (True, True):
@@ -216,6 +218,10 @@ class Enemy(pg.sprite.Sprite):
     bullet_img = pg.image.load("fig/bullet1.png")
     
     def __init__(self):
+        """
+        敵機画像Surfaceを生成する
+        ランダムな敵機画像を選択し、画面上部からランダムな位置に配置する
+        """
         super().__init__()
         self.image = pg.transform.rotozoom(random.choice(__class__.imgs), 0, 0.8)
         self.rect = self.image.get_rect()
@@ -230,8 +236,8 @@ class Enemy(pg.sprite.Sprite):
     def update(self):
         """
         敵機を速度ベクトルself.vyに基づき移動（降下）させる
-        ランダムに決めた停止位置_boundまで降下したら，_stateを停止状態に変更する
-        引数 screen：画面Surface
+        ランダムに決めた停止位置self.boundまで降下したら、self.stateを停止状態に変更する
+        体力が0以下になった場合は敵機を消去する
         """
         if self.rect.centery > self.bound:
             self.vy = 0
@@ -255,6 +261,10 @@ class Boss(Enemy):
     """
     
     def __init__(self):
+        """
+        ボス敵機画像Surfaceを生成する
+        画面中央上部から登場し、通常の敵機より高い体力と速い攻撃間隔を持つ
+        """
         super().__init__()
         self.image = pg.transform.rotozoom(pg.image.load("fig/boss.png"), 0, 4)
         self.rect = self.image.get_rect()
@@ -269,9 +279,9 @@ class Boss(Enemy):
 
     def update(self):
         """
-        敵機を速度ベクトルself.vyに基づき移動（降下）させる
-        ランダムに決めた停止位置_boundまで降下したら，_stateを停止状態に変更する
-        引数 screen：画面Surface
+        ボス敵機を速度ベクトルself.vyに基づき移動（降下）させる
+        停止位置self.boundまで降下したら、self.stateを停止状態に変更する
+        体力が0以下になった場合はボス敵機を消去する
         """
         if self.rect.centery > self.bound:
             self.vy = 0
@@ -280,11 +290,11 @@ class Boss(Enemy):
         if self.hp <= 0:
             self.kill()
 
-    def shoot(self, bird: Bird) -> Bullet:
+    def shoot(self, bird: Bird) -> list[Bullet]:
         """
-        敵機がこうかとんに向けて爆弾を放つ
+        ボス敵機がこうかとんに向けて3方向に爆弾を放つ
         引数 bird：こうかとん
-        戻り値：爆弾インスタンス
+        戻り値：爆弾インスタンスのリスト（3個）
         """
         direction = calc_orientation(self.rect, bird.rect)
         angle = math.degrees(math.atan2(-direction[1], direction[0]))
@@ -338,7 +348,7 @@ def main():
             emy.hp -= 1  # 敵機の体力を1減少
             if emy.hp <= 0:
                 emy.kill()
-            bird.change_img(6, screen)  # こうかとん喜びエフェクト
+                bird.change_img(6, screen)  # こうかとん喜びエフェクト
 
         for bullet in pg.sprite.spritecollide(bird, bullets, True):
             exps.add(Explosion(bullet, 10))  # 爆発エフェクト
