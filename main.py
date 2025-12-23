@@ -331,6 +331,41 @@ class Menu:
         self.screen.blit(title_surf,title_rect)
         self.screen.blit(msg_surf,msg_rect)
 
+class Score:
+    """
+    スコア表示のクラス
+    ゲーム中のポイントを保持し、画面左下に表示する
+    value : 現在のスコア
+    """
+    def __init__(self):
+        self.font = pg.font.Font(None, 50)
+        self.color = (0, 0, 255)
+        self.value = 0
+        self.image = self.font.render(f"Score: {self.value}", 0, self.color)
+        self.rect = self.image.get_rect()
+        self.rect.center = 100, HEIGHT-50
+
+    def update(self, screen: pg.Surface):
+        self.image = self.font.render(f"Score: {self.value}", 0, self.color)
+        screen.blit(self.image, self.rect)
+
+class Point(pg.sprite.Sprite):
+    """
+    ポイントアイテムのクラス
+    敵撃破時に確率で出現するポイントアイテムの管理
+    """
+    def __init__(self, xy: tuple[int, int]):
+        super().__init__()
+        self.image = pg.transform.rotozoom(pg.image.load("fig/point.png"), 0, 0.1)
+        self.rect = self.image.get_rect()
+        self.rect.center = xy
+        self.vx = 0
+        self.vy = 2
+
+    def update(self):
+        self.rect.move_ip(self.vx, self.vy)
+        if self.rect.top > HEIGHT:
+            self.kill()
 
 def main():
     pg.display.set_caption("真！こうかとん無双")
@@ -351,6 +386,8 @@ def main():
     emys = pg.sprite.Group()
     bullets = pg.sprite.Group()
 
+    score = Score()
+    points = pg.sprite.Group()
 
     tmr = 0
     clock = pg.time.Clock()
@@ -396,9 +433,15 @@ def main():
             if emy.hp <= 0:
                 emy.kill()
                 bird.change_img(6, screen)  # こうかとん喜びエフェクト
+                score.value += 10  # 敵撃破時の獲得ポイント
+
+                if random.random() < 0.1:  # 敵撃破時のポイントアイテム出現確率
+                    points.add(Point(emy.rect.center))
 
         for bullet in pg.sprite.spritecollide(bird, bullets, True):
             exps.add(Explosion(bullet, 10))  # 爆発エフェクト
+        if pg.sprite.spritecollide(bird, points, True):
+            score.value += 50  # ポイントアイテム獲得時の獲得ポイント
         
         bird.update(key_lst, screen)
         beams.update()
@@ -409,6 +452,9 @@ def main():
         bullets.draw(screen)
         exps.update()
         exps.draw(screen)
+        score.update(screen)
+        points.update()
+        points.draw(screen)
         pg.display.update()
         tmr += 1
         clock.tick(50)
